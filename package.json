@@ -1,0 +1,16 @@
+{
+  "name": "campusshield-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CAMPUSSHIELD hackathon monorepo for explainable campus outbreak early warning.",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build --prefix frontend && npm run build --prefix backend",
+    "test": "npm test --prefix frontend && npm test --prefix backend"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
