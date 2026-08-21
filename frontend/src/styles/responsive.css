@@ -14,18 +14,3 @@
   .cs-kpi-grid { grid-template-columns: 1fr; }
   .cs-dashboard-card { padding: 0.8rem; }
 }
-@media (max-width: 900px) {
-  .cs-nav-actions { margin-left: auto; }
-  .cs-layout { grid-template-columns: 1fr; }
-  .cs-sidebar { position: static; }
-  .cs-kpi-grid--wide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
-@media (max-width: 560px) {
-  .cs-page { padding: 1rem; }
-  .cs-auth-card { padding: 1.25rem; }
-  .cs-form-grid, .cs-kpi-grid--wide { grid-template-columns: 1fr; }
-  .cs-content { padding: 1rem; }
-  .cs-topbar { align-items: flex-start; }
-  .cs-nav-actions { flex-wrap: wrap; justify-content: flex-end; }
-}

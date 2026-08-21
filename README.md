@@ -347,10 +347,10 @@ Phase 1 has Helmet, CORS, JSON limits, rate limiting, and environment scaffoldin
 
 ## Limitations
 
-- The application is partially functional but not yet complete against the final acceptance criteria.
-- Authentication, backend RBAC, student reports, advisories, notifications, audit logs, and a lightweight analytics handoff are implemented.
-- Advanced outbreak radar maps, simulations, facility corrective actions, Redis-backed workflows, and full statistical source-attribution are still planned.
-- Docker Compose has service wiring but has not been validated in this environment.
+- Phase 1 is scaffolding, not a complete application.
+- Authentication, RBAC, database models, reports, outbreak analytics, maps, notifications, and simulations are not implemented yet.
+- Docker Compose has service wiring but has not been validated against full domain workflows.
+- Analytics health endpoint exists, but statistical endpoints are planned.
 
 ## Future improvements
 
@@ -360,83 +360,26 @@ Phase 1 has Helmet, CORS, JSON limits, rate limiting, and environment scaffoldin
 - Add administrative threshold tuning UI.
 - Add richer geospatial visualizations and exportable investigation reports.
 
-
-## Full-stack implementation update
-
-This increment adds the first functional backend-enforced workflows beyond the Phase 1 shell.
-
-### Implemented now
-
-- **Authentication:** `POST /api/auth/register`, `POST /api/auth/login`, and `GET /api/auth/me` use MongoDB user records, bcrypt password hashing, JWTs, and public registration constrained to the `STUDENT` role.
-- **Backend RBAC:** Protected routes use JWT authentication and server-side role checks. Students cannot access health-admin/system-admin routes by changing frontend URLs.
-- **Student reports:** Authenticated students can submit symptom/exposure reports through `POST /api/reports`; reports are stored in MongoDB and appear in `GET /api/reports/my`.
-- **Analytics handoff:** Report submission calls the Python analytics service `POST /analyze` with `ANALYTICS_SECRET`; the returned explainable risk summary is stored on the report. If analytics is unavailable, the report still stores with a pending analytics summary.
-- **Dashboards:** Role-specific dashboard endpoints read MongoDB state for student, health-admin, facility, system-admin, and public-health views.
-- **Advisories and in-app notifications:** Health Admin/System Admin can create advisories; matching users receive `Notification` records in mock/in-app mode without Firebase.
-- **Audit logs:** Registration, login, report creation, user creation, and advisory creation write `AuditLog` records.
-- **Frontend:** The landing page now has LOGIN and REGISTER actions, role-aware redirects, protected dashboard screens, a real student symptom report form, report history, advisories, and role dashboards that call backend APIs.
-
-### New API routes
-
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/reports`
-- `GET /api/reports/my`
-- `GET /api/reports`
-- `GET /api/reports/public-health`
-- `GET /api/dashboard/student`
-- `GET /api/dashboard/health-admin`
-- `GET /api/dashboard/facility`
-- `GET /api/dashboard/system-admin`
-- `GET /api/dashboard/public-health`
-- `GET /api/advisories`
-- `POST /api/advisories`
-- `GET /api/notifications`
-- `POST /api/notifications/:id/read`
-- `GET /api/admin/users`
-- `POST /api/admin/users`
-- `GET /api/admin/audit-logs`
-
-### Roles implemented
-
-- `STUDENT`
-- `HEALTH_ADMIN`
-- `FACILITY_MANAGER`
-- `SYSTEM_ADMIN`
-- `PUBLIC_HEALTH_VIEWER`
-
-### Configuration added
-
-Backend now requires `ANALYTICS_SECRET` when calling analytics endpoints. The analytics service validates `x-analytics-secret` when `ANALYTICS_SECRET` is configured.
-
-### Current limitations
-
-- Facility corrective-action storage, full infrastructure management, simulations, Redis-backed queues, and Socket.IO dashboard refresh are still planned.
-- Outbreak analytics are explainable and data-derived but intentionally lightweight in this increment; advanced baseline/EWMA/DBSCAN/permutation/source-attribution endpoints remain planned.
-- Frontend uses browser `fetch` and the existing CSS design system; advanced charts and Leaflet maps are still planned.
-
 ## Current implementation status
 
 | Phase | Status | Notes |
 | --- | --- | --- |
 | Phase 1: Project scaffolding, README, Docker, environment configuration | DONE | Monorepo, service shells, Docker Compose, env examples, and docs are implemented. |
-| Phase 2: Authentication and RBAC | DONE | JWT, bcrypt, MongoDB users, backend RBAC middleware, public student registration, and role dashboards implemented. |
-| Phase 3: Database models and seed data | IN PROGRESS | Core User, HealthReport, Advisory, Notification, and AuditLog models exist; infrastructure/seed models remain planned. |
-| Phase 4: Student symptom reporting | IN PROGRESS | Authenticated student report submission, MongoDB storage, history, and analytics handoff implemented. |
+| Phase 2: Authentication and RBAC | TODO | JWT, bcrypt, roles, auth UI, and permissions pending. |
+| Phase 3: Database models and seed data | TODO | Mongoose models, indexes, and synthetic seed data pending. |
+| Phase 4: Student symptom reporting | TODO | Student PWA report flow pending. |
 | Phase 5: Admin dashboard | TODO | Outbreak Radar, KPIs, maps, and charts pending. |
-| Phase 6: Outbreak analytics service | IN PROGRESS | `/analyze` endpoint returns data-derived risk/evidence summary; advanced statistical modules remain planned. |
+| Phase 6: Outbreak analytics service | TODO | Explainable analytics endpoints pending. |
 | Phase 7: Exposure/source attribution | TODO | Association tests and source rankings pending. |
 | Phase 8: Real-time updates | IN PROGRESS | Socket.IO server scaffold exists; domain events pending. |
-| Phase 9: Notifications | IN PROGRESS | In-app mock notification records are created for reports/advisories; Firebase push remains optional/planned. |
+| Phase 9: Notifications | TODO | Firebase/mock notification architecture pending. |
 | Phase 10: Simulation engine | TODO | Demo data and outbreak scenario controls pending. |
 | Phase 11: Explainability, counterfactual analysis, outbreak replay | TODO | Planned after analytics and simulation. |
 | Phase 12: Testing, security, performance, documentation, final polish | TODO | Test scripts exist as placeholders; tests pending. |
 
 ## Known issues
 
-- Frontend package installation is still environment-dependent because npm registry access was blocked in this workspace.
-- Backend now requires MongoDB at startup and will fail fast if `MONGODB_URI` is unavailable.
-- Redis is configured but not yet used for queues/caching.
+- No domain UI routes beyond the Phase 1 landing shell.
+- No package lock files until dependency installation is run.
+- Backend currently does not connect to MongoDB or Redis; this is intentional for Phase 1 health scaffolding.
 - The `scripts/seed.js` and `scripts/generateSyntheticData.js` executables are planned, not implemented.
-- Advanced epidemiological validation is not claimed; current analytics are a lightweight explainable prototype.
