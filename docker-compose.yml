@@ -1,0 +1,52 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: campusshield-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: campusshield
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusshield-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    container_name: campusshield-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.example
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/campusshield
+      REDIS_URL: redis://redis:6379
+      PYTHON_ANALYTICS_URL: http://analytics:8000
+      FRONTEND_URL: http://localhost:5173
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongo
+      - redis
+      - analytics
+
+  analytics:
+    build: ./analytics
+    container_name: campusshield-analytics
+    restart: unless-stopped
+    env_file:
+      - ./analytics/.env.example
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/campusshield
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo-data:

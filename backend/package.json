@@ -1,0 +1,38 @@
+{
+  "name": "campusshield-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "express": "latest",
+    "mongoose": "latest",
+    "cors": "latest",
+    "helmet": "latest",
+    "morgan": "latest",
+    "dotenv": "latest",
+    "zod": "latest",
+    "jsonwebtoken": "latest",
+    "bcrypt": "latest",
+    "socket.io": "latest",
+    "ioredis": "latest",
+    "express-rate-limit": "latest",
+    "axios": "latest"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "latest",
+    "@types/cors": "latest",
+    "@types/express": "latest",
+    "@types/jsonwebtoken": "latest",
+    "@types/morgan": "latest",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
