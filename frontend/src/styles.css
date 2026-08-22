@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -27,3 +28,9 @@ body {
   min-height: 100vh;
   background: #020617;
 }
+=======
+@import './styles/variables.css';
+@import './styles/globals.css';
+@import './styles/components.css';
+@import './styles/responsive.css';
+>>>>>>> 1e5f83279ff54e951d1ab9e6405460b3e20949de

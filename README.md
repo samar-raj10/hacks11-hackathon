@@ -207,6 +207,33 @@ Root `.env.example` provides Docker Compose defaults. Service-specific examples 
 - `ANALYTICS_SECRET`
 - `PORT`
 
+
+## Frontend styling restoration note
+
+The frontend previously rendered like plain HTML because the project declared `tailwindcss: latest`, which can resolve to Tailwind CSS v4, while `frontend/postcss.config.js` still used the older Tailwind PostCSS plugin shape (`tailwindcss: {}`). In Tailwind v4, PostCSS integration moved to `@tailwindcss/postcss`; without that plugin installed and configured, the `@tailwind base/components/utilities` directives in `frontend/src/styles.css` were not transformed into CSS.
+
+For this frontend-only fix, Tailwind processing was bypassed and replaced with a stable CSS design-system layer under `frontend/src/styles/`. This keeps the React entrypoint and app behavior intact while making the UI render correctly even when Tailwind v4/PostCSS configuration is unavailable.
+
+Changed frontend styling files:
+- `frontend/src/styles.css` now imports design-system CSS files instead of Tailwind directives.
+- `frontend/src/styles/variables.css` defines CampusShield colors, radius, shadows, typography, and focus tokens.
+- `frontend/src/styles/globals.css` defines global layout, typography, backgrounds, and accessibility focus behavior.
+- `frontend/src/styles/components.css` defines reusable UI classes for navigation, badges, buttons, cards, KPI cards, map containers, risk indicators, and evidence panels.
+- `frontend/src/styles/responsive.css` defines tablet/mobile behavior.
+- `frontend/postcss.config.js` no longer invokes a broken Tailwind PostCSS plugin.
+
+Tailwind v4 status: **replaced for active styling in this Phase 1 frontend shell**. Tailwind dependencies remain declared for future migration, but the working UI no longer depends on Tailwind compilation.
+
+Run the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+No new frontend dependency is required for the CSS design-system fallback.
+
 ## Database setup
 
 Phase 1 uses MongoDB through Docker Compose or a local MongoDB instance. Mongoose schemas and indexes will be implemented in Phase 3.

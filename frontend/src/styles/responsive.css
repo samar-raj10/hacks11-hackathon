@@ -1,0 +1,16 @@
+@media (max-width: 900px) {
+  .cs-topbar { position: static; transform: none; margin-top: 1rem; border-radius: 1.25rem; width: min(100% - 2rem, 1120px); }
+  .cs-nav { display: none; }
+  .cs-hero { padding-top: 1rem; }
+  .cs-hero__grid { grid-template-columns: 1fr; padding-top: 2rem; }
+  .cs-feature-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .cs-container { width: min(100% - 1rem, 1120px); }
+  .cs-title { font-size: clamp(2.85rem, 18vw, 4.5rem); }
+  .cs-actions, .cs-button { width: 100%; }
+  .cs-button { text-align: center; }
+  .cs-kpi-grid { grid-template-columns: 1fr; }
+  .cs-dashboard-card { padding: 0.8rem; }
+}
