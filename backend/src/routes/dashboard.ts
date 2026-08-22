@@ -1,9 +1,11 @@
 import { Router } from 'express';
 
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth.js';
+import { Advisory } from '../models/Advisory.js';
 import { HealthReport } from '../models/HealthReport.js';
+import { Notification } from '../models/Notification.js';
 import { User } from '../models/User.js';
-import { buildHeatmapData, buildMessExposureAlerts } from '../services/heatmapService.js';
+import { buildHeatmapData, buildMessExposureAlerts, buildMessHeatmapData } from '../services/heatmapService.js';
 
 const dashboardRouter = Router();
 
@@ -14,22 +16,24 @@ const getRiskLevel = (count: number) => {
   return 'LOW';
 };
 
-dashboardRouter.get('/student', requireAuth, requireRole('STUDENT'), async (_req: AuthRequest, res) => {
+dashboardRouter.get('/student', requireAuth, requireRole('STUDENT'), async (req: AuthRequest, res) => {
   const totalStudents = await User.countDocuments({ role: 'STUDENT' });
-  const currentUser = await User.findById(_req.user?.id);
-  const recentReports = await HealthReport.find({ studentId: _req.user?.id }).sort({ createdAt: -1 }).limit(5).lean();
+  const currentUser = await User.findById(req.user?.id);
+  const recentReports = await HealthReport.find({ studentId: req.user?.id }).sort({ createdAt: -1 }).limit(5).lean();
+  const advisories = await Advisory.find({ isActive: true, $or: [{ targetRoles: 'STUDENT' }, { targetRoles: { $size: 0 } }] }).sort({ createdAt: -1 }).limit(5).lean();
+  const notifications = await Notification.find({ userId: req.user?.id }).sort({ createdAt: -1 }).limit(5).lean();
 
   const data = {
     role: 'STUDENT',
     overview: {
       totalStudents,
       campusHealth: recentReports.length ? 'Monitoring' : 'Stable',
-      advisories: 0,
+      advisories: advisories.length,
       openReports: recentReports.length,
     },
     reports: recentReports,
-    advisories: [],
-    notifications: [{ id: 'n-1', title: 'New Health Advisory', message: 'No active advisory yet.', createdAt: new Date().toISOString() }],
+    advisories,
+    notifications: notifications.length > 0 ? notifications : [{ id: 'n-1', title: 'No active alerts', message: 'Your hostel is currently stable. Continue reporting any new symptoms.', createdAt: new Date().toISOString() }],
     profile: {
       name: currentUser?.name ?? 'Student',
       hostel: currentUser?.hostel ?? 'Not specified',
@@ -37,18 +41,21 @@ dashboardRouter.get('/student', requireAuth, requireRole('STUDENT'), async (_req
       mess: currentUser?.mess ?? 'Not specified',
       waterSource: currentUser?.waterSource ?? 'Not specified',
     },
-    message: 'No data available',
+    message: recentReports.length ? 'Recent reports are being monitored for cluster and source review.' : 'No recent reports. Student health remains stable and reporting is encouraged.',
   };
 
   return res.json(data);
 });
 
-dashboardRouter.get('/health-admin', requireAuth, requireRole('HEALTH_ADMIN'), async (_req: AuthRequest, res) => {
+dashboardRouter.get('/health-admin', requireAuth, requireRole('HEALTH_ADMIN'), async (req: AuthRequest, res) => {
   const windowMs = 24 * 60 * 60 * 1000;
   const recentReports = await HealthReport.find({ createdAt: { $gte: new Date(Date.now() - windowMs) } }).sort({ createdAt: -1 }).lean();
   const allReports = await HealthReport.find().sort({ createdAt: -1 }).lean();
   const heatmap = buildHeatmapData(allReports, 24);
+  const messHeatmap = buildMessHeatmapData(allReports, 24);
   const messAlerts = buildMessExposureAlerts(allReports, 24);
+  const advisories = await Advisory.find({ isActive: true, $or: [{ targetRoles: 'HEALTH_ADMIN' }, { targetRoles: { $size: 0 } }] }).sort({ createdAt: -1 }).limit(10).lean();
+  const notifications = await Notification.find({ userId: req.user?.id }).sort({ createdAt: -1 }).limit(10).lean();
   const activeClusters = heatmap.filter((cell) => cell.riskLevel === 'HIGH' || cell.riskLevel === 'SUSPICIOUS').length;
   const risk = getRiskLevel(recentReports.length);
 
@@ -66,6 +73,13 @@ dashboardRouter.get('/health-admin', requireAuth, requireRole('HEALTH_ADMIN'), a
 
   const analytics = (analyticsFromReports && typeof analyticsFromReports === 'object') ? analyticsFromReports : analyticsFallback;
 
+  const auditNotifications = notifications.length > 0 ? notifications : [{
+    id: 'ha-1',
+    title: 'Early warning review',
+    message: risk === 'HIGH' ? 'Multiple exposure signals are clustering in the same timeframe.' : 'No critical cluster has been detected yet.',
+    createdAt: new Date().toISOString(),
+  }];
+
   return res.json({
     role: 'HEALTH_ADMIN',
     overview: {
@@ -74,23 +88,26 @@ dashboardRouter.get('/health-admin', requireAuth, requireRole('HEALTH_ADMIN'), a
       activeClusters,
       campusRisk: analytics.overallRisk ?? risk,
       suspectedSources: messAlerts.length,
+      advisories: advisories.length,
     },
     stats: [
       { label: 'Total reports', value: allReports.length },
       { label: 'Recent cases', value: recentReports.length },
       { label: 'High-risk blocks', value: heatmap.filter((cell) => cell.riskLevel === 'HIGH').length },
       { label: 'Suspected messes', value: messAlerts.length },
+      { label: 'Advisories', value: advisories.length },
     ],
     alerts: messAlerts.slice(0, 5),
-    advisories: [],
-    notifications: [{ id: 'ha-1', title: 'Early warning review', message: risk === 'HIGH' ? 'Multiple exposure signals are clustering in the same timeframe.' : 'No critical cluster has been detected yet.', createdAt: new Date().toISOString() }],
+    advisories,
+    notifications: auditNotifications,
     heatmap,
+    messHeatmap,
     analytics,
     cases: recentReports,
     clusters: heatmap.filter((cell) => cell.riskLevel !== 'NORMAL').slice(0, 5),
     exposures: messAlerts.slice(0, 5),
     sources: messAlerts.slice(0, 5),
-    message: 'Block heatmap reflects current report intensity and shared exposure signals.',
+    message: 'Block and mess heatmaps reflect recent illness clusters, shared meal exposure, and source-level risk signals.',
   });
 });
 

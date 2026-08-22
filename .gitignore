@@ -1,5 +1,7 @@
 # CAMPUSSHIELD local artifacts
 .env
+.env.example
+.env.local
 .env.*
 !.env.example
 !.env.local.example

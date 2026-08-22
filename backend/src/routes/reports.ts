@@ -54,8 +54,7 @@ reportsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
     recentReports,
   });
 
-  report.analyticsSummary = analyticsSummary;
-  await report.save();
+  await Report.findByIdAndUpdate(report._id, { analyticsSummary }, { new: true });
 
   return res.status(201).json({
     message: 'Report submitted successfully.',

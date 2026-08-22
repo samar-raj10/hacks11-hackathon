@@ -23,6 +23,19 @@ export type MessExposureAlert = {
   summary: string;
 };
 
+export type MessHeatmapCell = {
+  id: string;
+  mess: string;
+  meal: string;
+  riskLevel: 'NORMAL' | 'WATCH' | 'SUSPICIOUS' | 'HIGH';
+  reportCount: number;
+  affectedStudents: number;
+  associatedBlocks: string[];
+  associationScore: number;
+  commonSymptoms: string[];
+  summary: string;
+};
+
 const getRiskLevelFromSignals = (reportCount: number, symptomSimilarity: number) => {
   if (reportCount >= 5 || (reportCount >= 3 && symptomSimilarity >= 0.5)) return 'HIGH';
   if (reportCount >= 3 || (reportCount >= 2 && symptomSimilarity >= 0.3)) return 'SUSPICIOUS';
@@ -119,6 +132,47 @@ export function buildMessExposureAlerts(reports: Array<Record<string, any>>, hou
         casesExposed,
         summary: `Increased illness reports have been associated with ${entry.mess} during ${entry.meal}. This is a suspected common exposure requiring investigation.`,
       } satisfies MessExposureAlert;
+    })
+    .sort((a, b) => b.associationScore - a.associationScore);
+}
+
+export function buildMessHeatmapData(reports: Array<Record<string, any>>, hoursWindow = 24): MessHeatmapCell[] {
+  const cutoff = Date.now() - hoursWindow * 60 * 60 * 1000;
+  const groups = new Map<string, { mess: string; meal: string; reports: any[] }>();
+
+  for (const report of reports) {
+    const ts = new Date(report.onsetDateTime ?? report.onsetAt ?? report.createdAt ?? Date.now()).getTime();
+    if (Number.isNaN(ts) || ts < cutoff) continue;
+    if (!report.mess) continue;
+
+    const key = `${report.mess}|${report.meal ?? 'Unknown meal'}`;
+    const entry = groups.get(key) ?? { mess: report.mess, meal: report.meal ?? 'Unknown meal', reports: [] as any[] };
+    entry.reports.push(report);
+    groups.set(key, entry);
+  }
+
+  return Array.from(groups.values())
+    .map((entry): MessHeatmapCell => {
+      const reportCount = entry.reports.length;
+      const affectedStudents = new Set(entry.reports.map((report) => report.studentId ?? report.email ?? report.hostel)).size;
+      const associatedBlocks = Array.from(new Set(entry.reports.map((report) => report.block ?? report.hostel ?? 'Unknown Block'))).filter(Boolean);
+      const commonSymptoms = Array.from(new Set(entry.reports.flatMap((report) => Array.isArray(report.symptoms) ? report.symptoms : [report.symptoms]).filter(Boolean))).slice(0, 5);
+      const symptomSimilarity = commonSymptoms.length > 0 ? Math.min(1, reportCount / Math.max(2, commonSymptoms.length)) : 0;
+      const associationScore = Math.min(0.99, 0.36 + reportCount * 0.12 + symptomSimilarity * 0.28);
+      const riskLevel = getRiskLevelFromSignals(reportCount, symptomSimilarity) as MessHeatmapCell['riskLevel'];
+
+      return {
+        id: `${entry.mess}:${entry.meal}`,
+        mess: entry.mess,
+        meal: entry.meal,
+        riskLevel,
+        reportCount,
+        affectedStudents,
+        associatedBlocks,
+        associationScore: Number(associationScore.toFixed(2)),
+        commonSymptoms,
+        summary: `Suspected exposure at ${entry.mess} during ${entry.meal}. Reports cluster in time and share similar symptoms.`,
+      };
     })
     .sort((a, b) => b.associationScore - a.associationScore);
 }

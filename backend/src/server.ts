@@ -11,6 +11,9 @@ import { connectDatabase } from './config/db.js';
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import reportsRouter from './routes/reports.js';
+import advisoryRoutes from './routes/advisoryRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +38,9 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/advisories', advisoryRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 const createSocketServer = () => {
   const httpServer = createServer(app);

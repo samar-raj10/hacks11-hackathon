@@ -738,12 +738,17 @@ type HeatmapCell = {
   suspectedExposures: Array<{ label: string; associationScore: number; type: 'MESS' | 'BLOCK' | 'WATER' }>;
 };
 
-function HealthHeatmapPanel() {
+function HealthHeatmapPanel({ data: dashboardData }: { data?: any }) {
   const { token } = useAuth();
-  const [data, setData] = React.useState<any>(null);
+  const [data, setData] = React.useState<any>(dashboardData ?? null);
   const [selectedCell, setSelectedCell] = React.useState<HeatmapCell | null>(null);
 
   React.useEffect(() => {
+    if (dashboardData) {
+      setData(dashboardData);
+      return;
+    }
+
     async function load() {
       if (!token) return;
       try {
@@ -754,7 +759,7 @@ function HealthHeatmapPanel() {
       }
     }
     load();
-  }, [token]);
+  }, [dashboardData, token]);
 
   const cells: HeatmapCell[] = data?.heatmap ?? [
     { id: 'A1', label: 'A1', type: 'BLOCK', totalReports: 2, recentReports: 2, riskLevel: 'NORMAL', trend: 18, recentCases: 2, reportsWithinWindow: 2, exampleSymptoms: ['Mild GI discomfort'], suspectedExposures: [{ label: 'Mess B dinner', associationScore: 0.31, type: 'MESS' }] },
@@ -836,6 +841,40 @@ function HealthHeatmapPanel() {
   );
 }
 
+function HealthAdminSectionPage({
+  title,
+  subtitle,
+  cards,
+  render,
+}: {
+  title: string;
+  subtitle: string;
+  cards: Array<{ label: string; value: string; tone?: string }>;
+  render: (data: any) => React.ReactNode;
+}) {
+  const { token } = useAuth();
+  const [data, setData] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    async function load() {
+      if (!token) return;
+      try {
+        const response = await getDashboard('health-admin', token);
+        setData(response);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    load();
+  }, [token]);
+
+  return (
+    <DashboardShell title={title} subtitle={subtitle} cards={cards.map((card) => ({ ...card, value: String(data?.overview?.[card.label.toLowerCase().replace(/[^a-z]/g, '')] ?? card.value) }))}>
+      {render(data)}
+    </DashboardShell>
+  );
+}
+
 function RoleDashboardStub({ role, title, cards }: { role: UserRole; title: string; cards: Array<{ label: string; value: string }> }) {
   const { token } = useAuth();
   const [data, setData] = React.useState<any>(null);
@@ -878,13 +917,85 @@ function App() {
       <Route path="/student/profile" element={<ProtectedRoute allowedRole="STUDENT"><StudentProfilePage /></ProtectedRoute>} />
 
       <Route path="/health-admin/dashboard" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminDashboardPage /></ProtectedRoute>} />
-      <Route path="/health-admin/radar" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Block Grid Heatmap" subtitle="Campus block and mess risk intensity" cards={[{ label: 'Risk score', value: 'LOW' }, { label: 'Clusters', value: '0' }, { label: 'Cases', value: '0' }, { label: 'Sources', value: '0' }]}><HealthHeatmapPanel /></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/cases" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Cases" subtitle="Case review" cards={[{ label: 'Cases', value: '0' }, { label: 'New', value: '0' }, { label: 'Reviewed', value: '0' }, { label: 'Flagged', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/clusters" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Clusters" subtitle="Detected clusters" cards={[{ label: 'Clusters', value: '0' }, { label: 'High risk', value: '0' }, { label: 'Active', value: '0' }, { label: 'Resolved', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/exposures" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Exposures" subtitle="Exposure tracking" cards={[{ label: 'Exposures', value: '0' }, { label: 'Meals', value: '0' }, { label: 'Water', value: '0' }, { label: 'Facilities', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/sources" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Sources" subtitle="Suspected source review" cards={[{ label: 'Sources', value: '0' }, { label: 'Mess', value: '0' }, { label: 'Tap water', value: '0' }, { label: 'Shared areas', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/analytics" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Analytics" subtitle="Evidence and trend analysis" cards={[{ label: 'Signals', value: '0' }, { label: 'Risk score', value: '0' }, { label: 'Correlations', value: '0' }, { label: 'Confidence', value: '0%' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/health-admin/advisories" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Advisories" subtitle="Health advisories" cards={[{ label: 'Advisories', value: '0' }, { label: 'Sent', value: '0' }, { label: 'Pending', value: '0' }, { label: 'Escalated', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
+      <Route path="/health-admin/radar" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Block Grid Heatmap" subtitle="Campus block and mess risk intensity" cards={[{ label: 'Risk score', value: 'LOW' }, { label: 'Clusters', value: '0' }, { label: 'Cases', value: '0' }, { label: 'Sources', value: '0' }]} render={(data) => <HealthHeatmapPanel data={data} />} /></ProtectedRoute>} />
+      <Route path="/health-admin/cases" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Cases" subtitle="Case review" cards={[{ label: 'Cases', value: '0' }, { label: 'New', value: '0' }, { label: 'Reviewed', value: '0' }, { label: 'Flagged', value: '0' }]} render={(data) => (
+        <div className="space-y-4">
+          {(data?.cases ?? []).length === 0 ? <div className="text-slate-300">No data available</div> : (data?.cases ?? []).slice(0, 6).map((report: any, index: number) => (
+            <div key={report._id ?? index} className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-lg font-semibold text-white">{report.hostel ?? 'Unknown hostel'} / {report.block ?? 'Unknown block'}</div>
+                <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-xs uppercase tracking-wide text-cyan-200">{report.severity ?? 'Mild'}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-300">{(Array.isArray(report.symptoms) ? report.symptoms : [report.symptoms]).filter(Boolean).join(', ') || 'No symptom list available'}</div>
+            </div>
+          ))}
+        </div>
+      )} /></ProtectedRoute>} />
+      <Route path="/health-admin/clusters" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Clusters" subtitle="Detected clusters" cards={[{ label: 'Clusters', value: '0' }, { label: 'High risk', value: '0' }, { label: 'Active', value: '0' }, { label: 'Resolved', value: '0' }]} render={(data) => (
+        <div className="space-y-4">
+          {(data?.clusters ?? []).length === 0 ? <div className="text-slate-300">No data available</div> : (data?.clusters ?? []).slice(0, 5).map((cluster: any, index: number) => (
+            <div key={cluster.id ?? index} className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold text-white">{cluster.label ?? 'Cluster'}</div>
+                <span className="rounded-full border border-rose-400/30 bg-rose-500/10 px-2 py-1 text-xs uppercase text-rose-200">{cluster.riskLevel ?? 'WATCH'}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-300">{cluster.recentReports ?? 0} recent reports · {cluster.exampleSymptoms?.join(', ') ?? 'No symptom detail'}</div>
+            </div>
+          ))}
+        </div>
+      )} /></ProtectedRoute>} />
+      <Route path="/health-admin/exposures" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Exposures" subtitle="Exposure tracking" cards={[{ label: 'Exposures', value: '0' }, { label: 'Meals', value: '0' }, { label: 'Water', value: '0' }, { label: 'Facilities', value: '0' }]} render={(data) => (
+        <div className="space-y-4">
+          {(data?.exposures ?? []).length === 0 ? <div className="text-slate-300">No data available</div> : (data?.exposures ?? []).slice(0, 5).map((item: any, index: number) => (
+            <div key={item.mess ?? `${item.meal}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold text-white">{item.mess ?? 'Exposure source'}</div>
+                <span className="rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-1 text-xs uppercase text-orange-200">{item.riskLevel ?? 'WATCH'}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-300">{item.meal ?? 'Unknown meal'} · {item.reportsAssociated ?? 0} reports · Score {item.associationScore ?? 0}</div>
+            </div>
+          ))}
+        </div>
+      )} /></ProtectedRoute>} />
+      <Route path="/health-admin/sources" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Sources" subtitle="Suspected source review" cards={[{ label: 'Sources', value: '0' }, { label: 'Mess', value: '0' }, { label: 'Tap water', value: '0' }, { label: 'Shared areas', value: '0' }]} render={(data) => (
+        <div className="space-y-4">
+          {(data?.sources ?? []).length === 0 ? <div className="text-slate-300">No data available</div> : (data?.sources ?? []).slice(0, 5).map((item: any, index: number) => (
+            <div key={item.mess ?? `${item.meal}-${index}`} className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-semibold text-white">{item.mess ?? 'Untitled source'}</div>
+                <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-xs uppercase text-amber-200">{item.riskLevel ?? 'WATCH'}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-300">Association score: {item.associationScore ?? 0} · {item.summary ?? 'Suspected shared exposure.'}</div>
+            </div>
+          ))}
+        </div>
+      )} /></ProtectedRoute>} />
+      <Route path="/health-admin/analytics" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Analytics" subtitle="Evidence and trend analysis" cards={[{ label: 'Signals', value: '0' }, { label: 'Risk score', value: '0' }, { label: 'Correlations', value: '0' }, { label: 'Confidence', value: '0%' }]} render={(data) => (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-slate-950 p-4">
+            <div className="text-sm uppercase tracking-[0.2em] text-cyan-300">Overall risk</div>
+            <div className="mt-2 text-3xl font-bold text-white">{data?.analytics?.overallRisk ?? data?.overview?.campusRisk ?? 'LOW'}</div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            {(data?.analytics?.evidence ?? data?.analytics?.suspectedExposureRanking ?? []).slice(0, 4).map((item: any, index: number) => (
+              <div key={String(item) + index} className="rounded-2xl border border-white/10 bg-slate-950 p-4 text-slate-300">{String(item)}</div>
+            ))}
+          </div>
+        </div>
+      )} /></ProtectedRoute>} />
+      <Route path="/health-admin/advisories" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminSectionPage title="Advisories" subtitle="Health advisories" cards={[{ label: 'Advisories', value: '0' }, { label: 'Sent', value: '0' }, { label: 'Pending', value: '0' }, { label: 'Escalated', value: '0' }]} render={(data) => (
+        <div className="space-y-4">
+          {(data?.advisories ?? []).length === 0 ? <div className="text-slate-300">No data available</div> : (data?.advisories ?? []).map((item: any, index: number) => (
+            <div key={item._id ?? index} className="rounded-2xl border border-cyan-500/20 bg-slate-950 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-lg font-semibold text-white">{item.title ?? 'Health Advisory'}</div>
+                <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 text-xs uppercase text-cyan-200">{item.severity ?? 'INFO'}</span>
+              </div>
+              <div className="mt-2 text-sm text-slate-300">{item.message ?? 'No advisory message provided.'}</div>
+            </div>
+          ))}
+        </div>
+      )} /></ProtectedRoute>} />
 
       <Route path="/facility/dashboard" element={<ProtectedRoute allowedRole="FACILITY_MANAGER"><DashboardShell title="Facility Dashboard" subtitle="Mess, water, and facility operations" cards={[{ label: 'Alerts', value: '0' }, { label: 'Water', value: '0' }, { label: 'Mess', value: '0' }, { label: 'Actions', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
       <Route path="/system-admin/dashboard" element={<ProtectedRoute allowedRole="SYSTEM_ADMIN"><DashboardShell title="System Admin Dashboard" subtitle="Platform and infrastructure overview" cards={[{ label: 'Users', value: '0' }, { label: 'Hostels', value: '0' }, { label: 'Blocks', value: '0' }, { label: 'Systems', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
