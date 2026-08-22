@@ -9,7 +9,6 @@ const rolePaths: Record<UserRole, string> = {
   HEALTH_ADMIN: '/health-admin/dashboard',
   FACILITY_MANAGER: '/facility/dashboard',
   SYSTEM_ADMIN: '/system-admin/dashboard',
-  PUBLIC_HEALTH_VIEWER: '/public-health/dashboard',
 };
 
 export function ProtectedRoute({

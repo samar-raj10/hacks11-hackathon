@@ -11,6 +11,9 @@ export interface IReport extends Document {
   mess?: string;
   waterSource?: string;
   otherExposureInfo?: string;
+  normalizedSymptoms?: Array<{ canonical: string; confidence: number }>; 
+  syndrome?: string;
+  normalizationStatus?: 'PENDING' | 'NORMALIZED' | 'FALLBACK';
   status: 'PENDING' | 'REVIEWED' | 'FLAGGED';
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +31,9 @@ const reportSchema = new Schema<IReport>(
     mess: { type: String, trim: true },
     waterSource: { type: String, trim: true },
     otherExposureInfo: { type: String, trim: true },
+    normalizedSymptoms: [{ canonical: { type: String }, confidence: { type: Number, default: 0 } }],
+    syndrome: { type: String, trim: true },
+    normalizationStatus: { type: String, enum: ['PENDING', 'NORMALIZED', 'FALLBACK'], default: 'PENDING' },
     status: { type: String, enum: ['PENDING', 'REVIEWED', 'FLAGGED'], default: 'PENDING' },
   },
   { timestamps: true },

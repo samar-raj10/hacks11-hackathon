@@ -62,14 +62,4 @@ router.get('/', requireAuth, requireRoles('HEALTH_ADMIN', 'SYSTEM_ADMIN'), async
   }
 });
 
-router.get('/public-health', requireAuth, requireRoles('PUBLIC_HEALTH_VIEWER', 'HEALTH_ADMIN', 'SYSTEM_ADMIN'), async (_req, res, next) => {
-  try {
-    const byHostel = await HealthReport.aggregate([{ $group: { _id: '$hostel', count: { $sum: 1 } } }, { $sort: { count: -1 } }]);
-    const bySeverity = await HealthReport.aggregate([{ $group: { _id: '$severity', count: { $sum: 1 } } }]);
-    res.json({ byHostel, bySeverity });
-  } catch (error) {
-    next(error);
-  }
-});
-
 export default router;

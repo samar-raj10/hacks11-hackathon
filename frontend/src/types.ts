@@ -1,4 +1,4 @@
-export type UserRole = 'STUDENT' | 'HEALTH_ADMIN' | 'FACILITY_MANAGER' | 'SYSTEM_ADMIN' | 'PUBLIC_HEALTH_VIEWER';
+export type UserRole = 'STUDENT' | 'HEALTH_ADMIN' | 'FACILITY_MANAGER' | 'SYSTEM_ADMIN';
 
 export type AppUser = {
   id: string;

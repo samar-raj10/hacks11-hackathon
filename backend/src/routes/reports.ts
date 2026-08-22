@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { Report } from '../models/Report.js';
+import { analyzeReport } from '../services/analyticsClient.js';
+import { normalizeSymptomsText } from '../services/geminiService.js';
 
 const reportsRouter = Router();
 
@@ -30,13 +32,37 @@ reportsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ message: parsed.error.issues[0]?.message ?? 'Invalid report payload.' });
   }
 
+  const { symptoms, ...rest } = parsed.data;
+  const normalized = await normalizeSymptomsText(symptoms);
+
   const report = await Report.create({
     studentId: req.user?.id,
-    ...parsed.data,
+    symptoms,
+    ...rest,
+    normalizedSymptoms: normalized.symptoms,
+    syndrome: normalized.syndrome,
+    normalizationStatus: normalized.status,
     onsetDateTime: new Date(parsed.data.onsetDateTime),
   });
 
-  return res.status(201).json({ message: 'Report submitted successfully.', report });
+  const recentReports = await Report.find({
+    createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+  }).lean();
+
+  const analyticsSummary = await analyzeReport({
+    report: report.toObject(),
+    recentReports,
+  });
+
+  report.analyticsSummary = analyticsSummary;
+  await report.save();
+
+  return res.status(201).json({
+    message: 'Report submitted successfully.',
+    report,
+    normalization: { status: normalized.status, syndrome: normalized.syndrome, symptoms: normalized.symptoms },
+    analytics: analyticsSummary,
+  });
 });
 
 export default reportsRouter;

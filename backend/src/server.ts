@@ -36,26 +36,33 @@ app.use('/api/auth', authRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/reports', reportsRouter);
 
-const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: true, credentials: true } });
+const createSocketServer = () => {
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, { cors: { origin: true, credentials: true } });
 
-io.on('connection', (socket) => {
-  socket.emit('campusshield:hello', { message: 'CampusShield socket connected.' });
-});
+  io.on('connection', (socket) => {
+    socket.emit('campusshield:hello', { message: 'CampusShield socket connected.' });
+  });
+
+  return httpServer;
+};
 
 const listenWithFallback = (port: number): Promise<number> => {
   return new Promise((resolve, reject) => {
-    const server = httpServer.listen(port, () => {
-      console.log(`CAMPUSSHIELD backend listening on http://localhost:${port}`);
-      resolve(port);
+    const server = createSocketServer();
+
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE' && port < 4100) {
+        server.close(() => resolve(listenWithFallback(port + 1)));
+        return;
+      }
+
+      reject(error);
     });
 
-    server.on('error', (error: NodeJS.ErrnoException) => {
-      if (error.code === 'EADDRINUSE' && port < 4100) {
-        resolve(listenWithFallback(port + 1));
-      } else {
-        reject(error);
-      }
+    server.listen(port, () => {
+      console.log(`CAMPUSSHIELD backend listening on http://localhost:${port}`);
+      resolve(port);
     });
   });
 };

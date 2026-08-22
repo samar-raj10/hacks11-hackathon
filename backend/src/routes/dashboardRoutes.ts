@@ -44,14 +44,4 @@ router.get('/system-admin', requireAuth, requireRoles('SYSTEM_ADMIN'), async (_r
   res.json({ status: 'ok', message: 'System admin endpoints are protected and ready for user/infrastructure management.' });
 });
 
-router.get('/public-health', requireAuth, requireRoles('PUBLIC_HEALTH_VIEWER', 'SYSTEM_ADMIN'), async (_req, res, next) => {
-  try {
-    const totalCases = await HealthReport.countDocuments();
-    const byHostel = await HealthReport.aggregate([{ $group: { _id: '$hostel', count: { $sum: 1 } } }]);
-    res.json({ totalCases, byHostel, privacy: 'Aggregated counts only; no student-identifiable records.' });
-  } catch (error) {
-    next(error);
-  }
-});
-
 export default router;

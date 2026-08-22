@@ -2,8 +2,9 @@ import bcrypt from 'bcrypt';
 import { Router } from 'express';
 import { z } from 'zod';
 
-import { requireAuth, signToken, type AuthRequest } from '../middleware/auth.js';
+import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { User } from '../models/User.js';
+import { signToken } from '../utils/jwt.js';
 
 const authRouter = Router();
 
@@ -62,7 +63,7 @@ authRouter.post('/register', async (req, res) => {
     isActive: true,
   });
 
-  const token = signToken(user._id.toString(), user.role, user.email, user.name);
+  const token = signToken({ sub: user._id.toString(), email: user.email, role: user.role });
 
   return res.status(201).json({
     message: 'Registration successful.',
@@ -90,7 +91,7 @@ authRouter.post('/login', async (req, res) => {
     return res.status(401).json({ message: 'Invalid email or password.' });
   }
 
-  const token = signToken(user._id.toString(), user.role, user.email, user.name);
+  const token = signToken({ sub: user._id.toString(), email: user.email, role: user.role });
 
   return res.json({
     message: 'Login successful.',

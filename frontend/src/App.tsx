@@ -11,7 +11,6 @@ const rolePaths: Record<UserRole, string> = {
   HEALTH_ADMIN: '/health-admin/dashboard',
   FACILITY_MANAGER: '/facility/dashboard',
   SYSTEM_ADMIN: '/system-admin/dashboard',
-  PUBLIC_HEALTH_VIEWER: '/public-health/dashboard',
 };
 
 const roleNavItems: Record<UserRole, Array<{ label: string; to: string }>> = {
@@ -24,7 +23,7 @@ const roleNavItems: Record<UserRole, Array<{ label: string; to: string }>> = {
   ],
   HEALTH_ADMIN: [
     { label: 'Dashboard', to: '/health-admin/dashboard' },
-    { label: 'Radar', to: '/health-admin/radar' },
+    { label: 'Heatmap', to: '/health-admin/radar' },
     { label: 'Cases', to: '/health-admin/cases' },
     { label: 'Clusters', to: '/health-admin/clusters' },
     { label: 'Exposures', to: '/health-admin/exposures' },
@@ -44,12 +43,6 @@ const roleNavItems: Record<UserRole, Array<{ label: string; to: string }>> = {
     { label: 'Infrastructure', to: '/system-admin/dashboard' },
     { label: 'Configuration', to: '/system-admin/dashboard' },
     { label: 'Audit Logs', to: '/system-admin/dashboard' },
-  ],
-  PUBLIC_HEALTH_VIEWER: [
-    { label: 'Dashboard', to: '/public-health/dashboard' },
-    { label: 'Surveillance', to: '/public-health/dashboard' },
-    { label: 'Trends', to: '/public-health/dashboard' },
-    { label: 'Reports', to: '/public-health/dashboard' },
   ],
 };
 
@@ -158,7 +151,7 @@ function LandingPage() {
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {['Explainable outbreak radar', 'Student-first reporting', 'Python analytics service'].map((item) => (
+          {['Explainable block heatmap', 'Student-first reporting', 'Python analytics service'].map((item) => (
             <div key={item} className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl">
               {item}
             </div>
@@ -188,7 +181,7 @@ function LandingPage() {
           {[
             'Real student reporting and exposures',
             'Role-specific dashboards',
-            'Health admin outbreak radar',
+            'Health admin block heatmap',
             'Facility action tracking and alerts',
             'System admin management and audit controls',
             'Analytics-ready data collection pipeline',
@@ -717,7 +710,7 @@ function HealthAdminDashboardPage() {
     >
       <div className="space-y-5 text-slate-300">
         <div className="flex flex-wrap gap-3">
-          <Link to="/health-admin/radar" className="rounded-full bg-cyan-500 px-4 py-2 font-medium text-slate-950">Outbreak Radar</Link>
+          <Link to="/health-admin/radar" className="rounded-full bg-cyan-500 px-4 py-2 font-medium text-slate-950">Block Heatmap</Link>
           <Link to="/health-admin/cases" className="rounded-full border border-white/10 px-4 py-2 text-slate-200">Cases</Link>
           <Link to="/health-admin/clusters" className="rounded-full border border-white/10 px-4 py-2 text-slate-200">Clusters</Link>
           <Link to="/health-admin/exposures" className="rounded-full border border-white/10 px-4 py-2 text-slate-200">Exposures</Link>
@@ -728,6 +721,118 @@ function HealthAdminDashboardPage() {
         </div>
       </div>
     </DashboardShell>
+  );
+}
+
+type HeatmapCell = {
+  id: string;
+  label: string;
+  type: 'BLOCK' | 'MESS';
+  totalReports: number;
+  recentReports: number;
+  riskLevel: 'NORMAL' | 'WATCH' | 'SUSPICIOUS' | 'HIGH';
+  trend: number;
+  recentCases: number;
+  reportsWithinWindow: number;
+  exampleSymptoms: string[];
+  suspectedExposures: Array<{ label: string; associationScore: number; type: 'MESS' | 'BLOCK' | 'WATER' }>;
+};
+
+function HealthHeatmapPanel() {
+  const { token } = useAuth();
+  const [data, setData] = React.useState<any>(null);
+  const [selectedCell, setSelectedCell] = React.useState<HeatmapCell | null>(null);
+
+  React.useEffect(() => {
+    async function load() {
+      if (!token) return;
+      try {
+        const response = await getDashboard('health-admin', token);
+        setData(response);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    load();
+  }, [token]);
+
+  const cells: HeatmapCell[] = data?.heatmap ?? [
+    { id: 'A1', label: 'A1', type: 'BLOCK', totalReports: 2, recentReports: 2, riskLevel: 'NORMAL', trend: 18, recentCases: 2, reportsWithinWindow: 2, exampleSymptoms: ['Mild GI discomfort'], suspectedExposures: [{ label: 'Mess B dinner', associationScore: 0.31, type: 'MESS' }] },
+    { id: 'B2', label: 'B2', type: 'BLOCK', totalReports: 5, recentReports: 5, riskLevel: 'WATCH', trend: 42, recentCases: 5, reportsWithinWindow: 5, exampleSymptoms: ['Abdominal pain'], suspectedExposures: [{ label: 'Mess A dinner', associationScore: 0.58, type: 'MESS' }] },
+    { id: 'B3', label: 'B3', type: 'BLOCK', totalReports: 12, recentReports: 12, riskLevel: 'HIGH', trend: 140, recentCases: 8, reportsWithinWindow: 12, exampleSymptoms: ['Vomiting', 'Diarrhea'], suspectedExposures: [{ label: 'Mess A dinner', associationScore: 0.84, type: 'MESS' }] },
+  ];
+
+  const cellStyles: Record<string, string> = {
+    NORMAL: 'bg-emerald-500/80 text-emerald-50',
+    WATCH: 'bg-yellow-500/80 text-yellow-950',
+    SUSPICIOUS: 'bg-orange-500/80 text-orange-50',
+    HIGH: 'bg-red-500/80 text-red-50',
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.2em] text-slate-300">
+        <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1">🟢 Normal</span>
+        <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1">🟡 Watch</span>
+        <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1">🟠 Suspicious</span>
+        <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1">🔴 High risk</span>
+      </div>
+
+      <div className="grid grid-cols-4 gap-3 rounded-3xl border border-white/10 bg-slate-950 p-4">
+        {cells.map((cell) => (
+          <button
+            key={cell.id}
+            type="button"
+            onClick={() => setSelectedCell(cell)}
+            className={`min-h-[88px] rounded-2xl border border-white/10 p-2 text-left transition hover:scale-[1.02] ${cellStyles[cell.riskLevel] ?? 'bg-slate-700'}`}
+          >
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide">
+              <span>{cell.label}</span>
+              <span>{cell.type}</span>
+            </div>
+            <div className="mt-3 text-xl font-black">{cell.recentReports}</div>
+            <div className="text-[10px] opacity-90">{cell.riskLevel}</div>
+          </button>
+        ))}
+      </div>
+
+      {selectedCell ? (
+        <div className="rounded-2xl border border-cyan-400/30 bg-slate-950 p-5 text-slate-200">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-cyan-300">Block</div>
+              <h3 className="text-2xl font-bold text-white">{selectedCell.label}</h3>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${cellStyles[selectedCell.riskLevel] ?? 'bg-slate-700'}`}>
+              {selectedCell.riskLevel}
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <div className="mb-2 text-sm text-slate-400">Report activity</div>
+              <div className="text-3xl font-bold text-white">{selectedCell.recentReports}</div>
+              <div className="mt-2 text-sm text-slate-300">Recent cases: {selectedCell.recentCases}</div>
+              <div className="text-sm text-slate-300">Trend: ↑ {selectedCell.trend}%</div>
+            </div>
+            <div>
+              <div className="mb-2 text-sm text-slate-400">Potential exposures</div>
+              {selectedCell.suspectedExposures?.map((exposure: any) => (
+                <div key={exposure.label} className="mb-2 rounded-xl border border-white/10 bg-slate-900 p-2 text-sm">
+                  <div>{exposure.label}</div>
+                  <div className="text-cyan-300">Association score: {Math.round((exposure.associationScore ?? 0) * 100)}%</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 text-sm text-slate-300">
+            <div className="font-semibold text-white">Common symptoms</div>
+            <div className="mt-2">{(selectedCell.exampleSymptoms ?? ['No symptom cluster yet']).join(', ')}</div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -773,7 +878,7 @@ function App() {
       <Route path="/student/profile" element={<ProtectedRoute allowedRole="STUDENT"><StudentProfilePage /></ProtectedRoute>} />
 
       <Route path="/health-admin/dashboard" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><HealthAdminDashboardPage /></ProtectedRoute>} />
-      <Route path="/health-admin/radar" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Outbreak Radar" subtitle="Geospatial monitoring" cards={[{ label: 'Risk score', value: 'LOW' }, { label: 'Clusters', value: '0' }, { label: 'Cases', value: '0' }, { label: 'Sources', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
+      <Route path="/health-admin/radar" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Block Grid Heatmap" subtitle="Campus block and mess risk intensity" cards={[{ label: 'Risk score', value: 'LOW' }, { label: 'Clusters', value: '0' }, { label: 'Cases', value: '0' }, { label: 'Sources', value: '0' }]}><HealthHeatmapPanel /></DashboardShell></ProtectedRoute>} />
       <Route path="/health-admin/cases" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Cases" subtitle="Case review" cards={[{ label: 'Cases', value: '0' }, { label: 'New', value: '0' }, { label: 'Reviewed', value: '0' }, { label: 'Flagged', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
       <Route path="/health-admin/clusters" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Clusters" subtitle="Detected clusters" cards={[{ label: 'Clusters', value: '0' }, { label: 'High risk', value: '0' }, { label: 'Active', value: '0' }, { label: 'Resolved', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
       <Route path="/health-admin/exposures" element={<ProtectedRoute allowedRole="HEALTH_ADMIN"><DashboardShell title="Exposures" subtitle="Exposure tracking" cards={[{ label: 'Exposures', value: '0' }, { label: 'Meals', value: '0' }, { label: 'Water', value: '0' }, { label: 'Facilities', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
@@ -783,8 +888,6 @@ function App() {
 
       <Route path="/facility/dashboard" element={<ProtectedRoute allowedRole="FACILITY_MANAGER"><DashboardShell title="Facility Dashboard" subtitle="Mess, water, and facility operations" cards={[{ label: 'Alerts', value: '0' }, { label: 'Water', value: '0' }, { label: 'Mess', value: '0' }, { label: 'Actions', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
       <Route path="/system-admin/dashboard" element={<ProtectedRoute allowedRole="SYSTEM_ADMIN"><DashboardShell title="System Admin Dashboard" subtitle="Platform and infrastructure overview" cards={[{ label: 'Users', value: '0' }, { label: 'Hostels', value: '0' }, { label: 'Blocks', value: '0' }, { label: 'Systems', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-      <Route path="/public-health/dashboard" element={<ProtectedRoute allowedRole="PUBLIC_HEALTH_VIEWER"><DashboardShell title="Public Health Dashboard" subtitle="Read-only aggregated surveillance overview" cards={[{ label: 'Case trends', value: '0' }, { label: 'Cluster counts', value: '0' }, { label: 'Risk levels', value: 'LOW' }, { label: 'Hostels', value: '0' }]}><div className="text-slate-300">No data available</div></DashboardShell></ProtectedRoute>} />
-
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
